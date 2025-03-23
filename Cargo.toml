@@ -1,0 +1,11 @@
+[package]
+name = "merge-my-gpx"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+clap = { version = "4.5.32", features = ["derive"] }
+clap_complete = "4.5.47"
+color-eyre = "0.6.3"
+eyre = "0.6.12"
+thiserror = "2.0.12"
