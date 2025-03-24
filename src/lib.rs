@@ -24,6 +24,13 @@ fn check_files(files: &[impl AsRef<Path>]) -> eyre::Result<()> {
                 file.display()
             ))?;
         }
+
+        if file.extension() != Some("gpx".as_ref()) {
+            Err(eyre!(
+                "'{}' does not appear to be a GPX file (since its extension is not '.gpx')",
+                file.display()
+            ))?;
+        }
     }
 
     Ok(())
