@@ -24,6 +24,7 @@ enum Command {
     ///
     /// File are merged by order of appearance on the command-line.
     Merge {
+        /// A list of path to your GPX files (separated with spaces)
         #[arg(required = true, num_args = 1..)]
         files: Vec<PathBuf>,
         // TODO Add --smart option to try to guess the order of the tracks and the files when merging
@@ -33,6 +34,7 @@ enum Command {
     /// Files are merged by alphabetical order of their names.
     #[command(name = "merge-all")]
     MergeAll {
+        /// The path of the directory where your GPX files are.
         #[arg(required = true)]
         directory: PathBuf,
     },
@@ -40,6 +42,7 @@ enum Command {
     /// Invert tracks in a file.
     /// Tracks are preserved.
     Invert {
+        /// A list of path to your GPX files (separated with spaces)
         #[arg(required = true, num_args = 1..)]
         files: Vec<PathBuf>,
         // TODO add a --output-dir option
@@ -49,11 +52,13 @@ enum Command {
     /// Same as the "invert" command with all the files in the given directory.
     #[command(name = "invert-all")]
     InvertAll {
+        /// The path of the directory where your GPX files are.
         #[arg(required = true)]
         directory: PathBuf,
     },
     /// Print information about a GPX file.
     Info {
+        /// The path of your GPX file.
         #[arg(required = true)]
         file: PathBuf,
     },
