@@ -1,5 +1,6 @@
 use eyre::eyre;
 use std::path::{Path, PathBuf};
+use strum_macros::Display;
 
 fn check_directory(directory: &impl AsRef<Path>) -> eyre::Result<()> {
     let directory = directory.as_ref();
@@ -68,8 +69,38 @@ fn list_gpx_files(directory: &impl AsRef<Path>) -> eyre::Result<Vec<PathBuf>> {
     Ok(gpx_files)
 }
 
+#[derive(Display)]
+enum Action {
+    #[strum(serialize = "inverted")]
+    Invert,
+    #[strum(serialize = "merged")]
+    Merge,
+}
+
+fn get_output_file_path(path: &impl AsRef<Path>, action: Action) -> PathBuf {
+    let path = path.as_ref();
+
+    if path.is_dir() {
+        path.join(action.to_string()).with_extension("gpx")
+    } else {
+        let ext = path.extension().expect("Path should have an extension");
+        let stem = path
+            .file_stem()
+            .expect("Path should have a stem")
+            .to_str()
+            .expect("Should be able to convert to string")
+            .to_owned()
+            + "-"
+            + &action.to_string();
+
+        let base = path.parent().expect("Path should have a parent");
+        base.join(stem).with_extension(ext)
+    }
+}
+
 pub fn info(file: &(impl AsRef<Path> + std::fmt::Debug)) -> eyre::Result<()> {
     check_files(&[file])?;
+
     Err(eyre!(
         "Not implemented yet: cannot give info about {:?}",
         file
@@ -78,36 +109,52 @@ pub fn info(file: &(impl AsRef<Path> + std::fmt::Debug)) -> eyre::Result<()> {
 
 pub fn invert(files: &[impl AsRef<Path> + std::fmt::Debug]) -> eyre::Result<()> {
     check_files(files)?;
-    Err(eyre!(
-        "Not implemented yet: cannot invert multiple files {:?}",
-        files
-    ))
+
+    let output_files = files
+        .iter()
+        .map(|f| get_output_file_path(f, Action::Invert))
+        .collect::<Vec<_>>();
+
+    println!("{:#?}", files);
+    println!("{:#?}", output_files);
+
+    Err(eyre!("Not implemented yet: cannot invert multiple files"))
 }
 
 pub fn invert_all(directory: &impl AsRef<Path>) -> eyre::Result<()> {
     check_directory(directory)?;
-    let _files = list_gpx_files(directory)?;
-    println!("{:#?}", _files);
-    Err(eyre!(
-        "Not implemented yet: cannot invert all in {:?} yet",
-        directory.as_ref()
-    ))
+
+    let input_files = list_gpx_files(directory)?;
+    let output_file = get_output_file_path(directory, Action::Invert);
+
+    println!("{:#?}", input_files);
+    println!("{:#?}", output_file);
+
+    Err(eyre!("Not implemented yet: cannot invert all"))
 }
 
 pub fn merge(files: &[impl AsRef<Path> + std::fmt::Debug]) -> eyre::Result<()> {
     check_files(files)?;
-    Err(eyre!(
-        "Not implemented yet: cannot merge multiple files {:?}",
-        files
-    ))
+
+    let output_files = files
+        .iter()
+        .map(|f| get_output_file_path(f, Action::Merge))
+        .collect::<Vec<_>>();
+
+    println!("{:#?}", files);
+    println!("{:#?}", output_files);
+
+    Err(eyre!("Not implemented yet: cannot merge multiple files"))
 }
 
 pub fn merge_all(directory: &impl AsRef<Path>) -> eyre::Result<()> {
     check_directory(directory)?;
-    let _files = list_gpx_files(directory)?;
-    println!("{:#?}", _files);
-    Err(eyre!(
-        "Not implemented yet: cannot merge all in {:?} yet",
-        directory.as_ref()
-    ))
+
+    let input_files = list_gpx_files(directory)?;
+    let output_file = get_output_file_path(directory, Action::Merge);
+
+    println!("{:#?}", input_files);
+    println!("{:#?}", output_file);
+
+    Err(eyre!("Not implemented yet: cannot merge all"))
 }
