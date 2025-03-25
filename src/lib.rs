@@ -1,4 +1,7 @@
 use eyre::eyre;
+use std::fmt::Debug;
+use std::fs::File;
+use std::io::BufReader;
 use std::path::{Path, PathBuf};
 use strum_macros::Display;
 
@@ -16,6 +19,7 @@ fn check_directory(directory: &impl AsRef<Path>) -> eyre::Result<()> {
 }
 
 fn check_files(files: &[impl AsRef<Path>]) -> eyre::Result<()> {
+    // TODO what is files is empty?
     for file in files {
         let file = file.as_ref();
 
@@ -66,7 +70,7 @@ fn list_gpx_files(directory: &impl AsRef<Path>) -> eyre::Result<Vec<PathBuf>> {
         })
         .collect();
 
-    Ok(gpx_files)
+    Ok(gpx_files) // TODO what is gpx_files is empty?
 }
 
 #[derive(Display)]
@@ -98,16 +102,71 @@ fn get_output_file_path(path: &impl AsRef<Path>, action: Action) -> PathBuf {
     }
 }
 
-pub fn info(file: &(impl AsRef<Path> + std::fmt::Debug)) -> eyre::Result<()> {
-    check_files(&[file])?;
-
-    Err(eyre!(
-        "Not implemented yet: cannot give info about {:?}",
-        file
-    ))
+fn print_option_field<T: Debug>(key: &str, option: &Option<T>) {
+    if let Some(value) = option {
+        println!("{key} = {value:?}");
+    }
 }
 
-pub fn invert(files: &[impl AsRef<Path> + std::fmt::Debug]) -> eyre::Result<()> {
+fn print_vec_field<T: Debug>(key: &str, value: &Vec<T>) {
+    if value.len() > 0 {
+        println!("{key} = {value:?}");
+    }
+}
+
+pub fn info(file: &(impl AsRef<Path> + Debug)) -> eyre::Result<()> {
+    check_files(&[file])?;
+
+    let path = file.as_ref();
+
+    println!("------------------------------------------");
+    println!("Info about {}", path.display());
+
+    let file = File::open(path)?;
+    let reader = BufReader::new(file);
+    let gpx = gpx::read(reader)?;
+
+    // Version
+    println!("GPX version = {}", gpx.version);
+    print_option_field("Creator", &gpx.creator);
+
+    println!("-- Metadata ------------------------------");
+
+    if let Some(metadata) = gpx.metadata {
+        print_option_field("name", &metadata.name);
+        print_option_field("description", &metadata.description);
+        print_option_field("author", &metadata.author);
+        print_vec_field("links", &metadata.links);
+        // print_option_field("time", &metadata.time); // FIXME doesn't implement Debug
+        print_option_field("keywords", &metadata.keywords);
+        print_option_field("copyright", &metadata.copyright);
+        // print_option_field("bounds", &metadata.bounds); // FIXME doesn't implement Debug
+    }
+
+    println!("-- Waypoints -----------------------------");
+    print_vec_field("Waypoints", &gpx.waypoints);
+
+    println!("-- Tracks --------------------------------");
+    for (i, item) in gpx.tracks.iter().enumerate() {
+        println!("-- Track #{i}  ------------------------------");
+        print_option_field("Name", &item.name);
+        print_option_field("comment", &item.comment);
+        print_option_field("description", &item.description);
+        print_option_field("source", &item.source);
+        print_vec_field("links", &item.links);
+        print_option_field("type", &item.type_);
+        print_option_field("number", &item.number);
+        println!("segments = {}", item.segments.len());
+    }
+
+    println!("-- Routes --------------------------------");
+    print_vec_field("Routes", &gpx.routes);
+
+    println!("------------------------------------------");
+    Ok(())
+}
+
+pub fn invert(files: &[impl AsRef<Path> + Debug]) -> eyre::Result<()> {
     check_files(files)?;
 
     let output_files = files
@@ -133,7 +192,7 @@ pub fn invert_all(directory: &impl AsRef<Path>) -> eyre::Result<()> {
     Err(eyre!("Not implemented yet: cannot invert all"))
 }
 
-pub fn merge(files: &[impl AsRef<Path> + std::fmt::Debug]) -> eyre::Result<()> {
+pub fn merge(files: &[impl AsRef<Path> + Debug]) -> eyre::Result<()> {
     check_files(files)?;
 
     let output_files = files
