@@ -9,6 +9,7 @@ struct Cli {
     #[arg(short, long, global = true)]
     verbose: bool,
 
+    // TODO add completion
     //// Generate shell completion script
     // #[arg(long = "completion", value_enum)]
     // generate_completion: Option<Shell>,
@@ -18,50 +19,77 @@ struct Cli {
     command: Command,
 }
 
+// TODO Add --smart option to "merge" and "merge-all" to try to guess the order of the tracks and the files when merging
+
+const HELP_FOR_FILES_ARG: &str = "A list of path to your GPX files (separated with spaces).";
+const HELP_FOR_DIRECTORY_ARG: &str = "The path of the directory where your GPX files are.";
+
 #[derive(Subcommand)]
 enum Command {
-    /// Merge all tracks from all files into a single file with a single track.
+    /// Merge all tracks from all given files into a file with a single track.
     ///
     /// File are merged by order of appearance on the command-line.
+    ///
+    /// A unique output file is created. // FIXME where
     Merge {
-        /// A list of path to your GPX files (separated with spaces)
-        #[arg(required = true, num_args = 1..)]
+        #[arg(required = true, num_args = 1.., help = HELP_FOR_FILES_ARG)]
         files: Vec<PathBuf>,
-        // TODO Add --smart option to try to guess the order of the tracks and the files when merging
     },
+
     /// Same as the "merge" command with all the files in the given directory.
     ///
     /// Files are merged by alphabetical order of their names.
     #[command(name = "merge-all")]
     MergeAll {
-        /// The path of the directory where your GPX files are.
-        #[arg(required = true)]
+        #[arg(required = true, help = HELP_FOR_DIRECTORY_ARG)]
         directory: PathBuf,
     },
 
-    /// Invert tracks in a file.
-    /// Tracks are preserved.
+    /// Invert each track of each given file.
+    ///
+    /// An output file is created per input file.
+    /// Tracks are not merged, just inverted one by one.
     Invert {
-        /// A list of path to your GPX files (separated with spaces)
-        #[arg(required = true, num_args = 1..)]
+        #[arg(required = true, num_args = 1.., help = HELP_FOR_FILES_ARG)]
         files: Vec<PathBuf>,
         // TODO add a --output-dir option
         // #[arg(short, long, required = false, help = "To override the default path for the ")]
         // output: Option<PathBuf>,
     },
+
     /// Same as the "invert" command with all the files in the given directory.
     #[command(name = "invert-all")]
     InvertAll {
-        /// The path of the directory where your GPX files are.
-        #[arg(required = true)]
+        #[arg(required = true, help = HELP_FOR_DIRECTORY_ARG)]
         directory: PathBuf,
     },
+
     /// Print information about a GPX file.
     Info {
         /// The path of your GPX file.
         #[arg(required = true)]
         file: PathBuf,
     },
+}
+
+fn execute(cli: &Cli) -> eyre::Result<()> {
+    match &cli.command {
+        Command::Invert { files } => {
+            invert(files)
+        }
+        Command::InvertAll { directory } => {
+            invert_all(directory)
+        }
+        Command::Merge { files } => {
+            merge(files)
+        }
+        Command::MergeAll { directory } => {
+            merge_all(directory)
+        }
+        Command::Info { file } => {
+            info(file)
+        }
+    }
 }
 
 fn main() -> eyre::Result<()> {
@@ -82,22 +110,8 @@ fn main() -> eyre::Result<()> {
     //     return Ok(());
     // }
 
-    match &cli.command {
-        Command::Invert { files } => {
-            invert(files)?;
-        }
-        Command::InvertAll { directory } => {
-            invert_all(directory)?;
-        }
-        Command::Merge { files } => {
-            merge(files)?;
-        }
-        Command::MergeAll { directory } => {
-            merge_all(directory)?;
-        }
-        Command::Info { file } => {
-            info(file)?;
-        }
+    if let Err(err) = execute(&cli) {
+        println!("Error: {:?}", err); // TODO use {} instead when software is more stable, or add a --debug (undocumented?) or --verbose option
     }
 
     Ok(())

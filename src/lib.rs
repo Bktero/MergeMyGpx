@@ -1,10 +1,12 @@
 use eyre::eyre;
+use std::collections::HashSet;
 use std::fmt::Debug;
 use std::fs::File;
 use std::io::BufReader;
 use std::path::{Path, PathBuf};
 use strum_macros::Display;
 
+/// Check if the path denoted by `directory` is actually an existing directory.
 fn check_directory(directory: &impl AsRef<Path>) -> eyre::Result<()> {
     let directory = directory.as_ref();
 
@@ -18,25 +20,43 @@ fn check_directory(directory: &impl AsRef<Path>) -> eyre::Result<()> {
     }
 }
 
+/// Check if the path denoted by `files` are actually an existing files.
+/// It also checks that there is no duplicates in `files`.
 fn check_files(files: &[impl AsRef<Path>]) -> eyre::Result<()> {
-    // TODO what is files is empty?
+    // It's OK if `files` is empty.
+    // Clap verifies that the list passed on the CLI is not empty so it's unlikely to get an empty list here.
+
+    if files.len() == 1 && files[0].as_ref().is_dir() {
+        return Err(eyre!(
+            "A list of files is expected but you have passed a single directory"
+        ));
+    }
+
     for file in files {
         let file = file.as_ref();
 
         if !file.is_file() {
-            Err(eyre!(
+            return Err(eyre!(
                 "'{}' does not exist or is a directory",
                 file.display()
-            ))?;
-            // TODO: if len() == 1 and path is a directory, suggest another command
+            ));
         }
 
         if file.extension() != Some("gpx".as_ref()) {
-            Err(eyre!(
+            return Err(eyre!(
                 "'{}' does not appear to be a GPX file (since its extension is not '.gpx')",
                 file.display()
-            ))?;
+            ));
         }
+    }
+
+    let unique = files
+        .iter()
+        .map(|as_ref_path| as_ref_path.as_ref().to_string_lossy().to_string())
+        .collect::<HashSet<_>>();
+
+    if unique.len() != files.len() {
+        return Err(eyre!("There are duplicated files in the list"));
     }
 
     Ok(())
@@ -56,7 +76,7 @@ fn list_gpx_files(directory: &impl AsRef<Path>) -> eyre::Result<Vec<PathBuf>> {
             match res {
                 Ok(dir_entry) => {
                     let path = dir_entry.path();
-                    if path.extension().map_or(false, |ext| ext == "gpx") {
+                    if path.extension().is_some_and(|ext| ext == "gpx") {
                         Some(path) // accept file
                     } else {
                         None // reject it
@@ -109,10 +129,13 @@ fn print_option_field<T: Debug>(key: &str, option: &Option<T>) {
 }
 
 fn print_vec_field<T: Debug>(key: &str, value: &Vec<T>) {
-    if value.len() > 0 {
+    if !value.is_empty() {
         println!("{key} = {value:?}");
     }
 }
+
+//----------------------------------------------------------------------------------------
+// Functions for the commands
 
 pub fn info(file: &(impl AsRef<Path> + Debug)) -> eyre::Result<()> {
     check_files(&[file])?;
