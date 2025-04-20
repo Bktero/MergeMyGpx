@@ -2,7 +2,8 @@ use eyre::eyre;
 use std::collections::HashSet;
 use std::fmt::Debug;
 use std::fs::File;
-use std::io::BufReader;
+use std::io::{BufReader, BufWriter};
+use std::iter::zip;
 use std::path::{Path, PathBuf};
 use strum_macros::Display;
 
@@ -62,10 +63,11 @@ fn check_files(files: &[impl AsRef<Path>]) -> eyre::Result<()> {
     Ok(())
 }
 
+/// List the GPX files in a directory, based on the extensions.
 fn list_gpx_files(directory: &impl AsRef<Path>) -> eyre::Result<Vec<PathBuf>> {
-    debug_assert!(directory.as_ref().is_dir());
+    assert!(directory.as_ref().is_dir());
 
-    let gpx_files: Vec<PathBuf> = std::fs::read_dir(directory)
+    let mut gpx_files: Vec<PathBuf> = std::fs::read_dir(directory)
         .map_err(|err| {
             eyre!(
                 "Cannot read entries in directory '{}': {err}",
@@ -83,14 +85,38 @@ fn list_gpx_files(directory: &impl AsRef<Path>) -> eyre::Result<Vec<PathBuf>> {
                     }
                 }
                 Err(e) => {
-                    eprintln!("Error reading directory entry: {e}");
+                    eprintln!("Cannot directory entry: {e}");
                     None
                 }
             }
         })
         .collect();
 
-    Ok(gpx_files) // TODO what is gpx_files is empty?
+    gpx_files.sort();
+
+    Ok(gpx_files)
+}
+
+/// Load the GPX data from a file.
+fn load_gpx(file: &impl AsRef<Path>) -> eyre::Result<gpx::Gpx> {
+    assert!(file.as_ref().extension().is_some_and(|ext| ext == "gpx"));
+    println!("Loading GPX from '{}'...", file.as_ref().display());
+
+    let f = File::open(file)?;
+    let reader = BufReader::new(f);
+    let gpx = gpx::read(reader)?;
+    Ok(gpx)
+}
+
+/// Save GPX content to a file.
+fn save_gpx(gpx: &gpx::Gpx, file: &impl AsRef<Path>) -> eyre::Result<()> {
+    assert!(file.as_ref().extension().is_some_and(|ext| ext == "gpx"));
+    println!("Saving GPX to '{}'...", file.as_ref().display());
+
+    let f = File::create(file)?;
+    let writer = BufWriter::new(f);
+    gpx::write(gpx, writer)?;
+    Ok(())
 }
 
 #[derive(Display)]
@@ -101,6 +127,7 @@ enum Action {
     Merge,
 }
 
+/// Construct of path of the output file for an operation on an input file or directory.
 fn get_output_file_path(path: &impl AsRef<Path>, action: Action) -> PathBuf {
     let path = path.as_ref();
 
@@ -137,59 +164,69 @@ fn print_vec_field<T: Debug>(key: &str, value: &Vec<T>) {
 //----------------------------------------------------------------------------------------
 // Functions for the commands
 
-pub fn info(file: &(impl AsRef<Path> + Debug)) -> eyre::Result<()> {
-    check_files(&[file])?;
+pub fn info(files: &[impl AsRef<Path>]) -> eyre::Result<()> {
+    check_files(files)?;
 
-    let path = file.as_ref();
+    for file in files {
+        let path = file.as_ref();
 
-    println!("------------------------------------------");
-    println!("Info about {}", path.display());
+        println!("******************************************");
+        println!("Info about {}", path.display());
 
-    let file = File::open(path)?;
-    let reader = BufReader::new(file);
-    let gpx = gpx::read(reader)?;
+        let file = File::open(path)?;
+        let reader = BufReader::new(file);
+        let gpx = gpx::read(reader)?;
 
-    // Version
-    println!("GPX version = {}", gpx.version);
-    print_option_field("Creator", &gpx.creator);
+        // Version
+        println!("GPX version = {}", gpx.version);
+        print_option_field("Creator", &gpx.creator);
 
-    println!("-- Metadata ------------------------------");
+        println!("-- Metadata ------------------------------");
 
-    if let Some(metadata) = gpx.metadata {
-        print_option_field("name", &metadata.name);
-        print_option_field("description", &metadata.description);
-        print_option_field("author", &metadata.author);
-        print_vec_field("links", &metadata.links);
-        // print_option_field("time", &metadata.time); // FIXME doesn't implement Debug
-        print_option_field("keywords", &metadata.keywords);
-        print_option_field("copyright", &metadata.copyright);
-        // print_option_field("bounds", &metadata.bounds); // FIXME doesn't implement Debug
+        if let Some(metadata) = gpx.metadata {
+            print_option_field("Name", &metadata.name);
+            print_option_field("Description", &metadata.description);
+            print_option_field("Author", &metadata.author);
+            print_vec_field("Links", &metadata.links);
+            print_option_field("Time", &metadata.time);
+            print_option_field("Keywords", &metadata.keywords);
+            print_option_field("Copyright", &metadata.copyright);
+            print_option_field("Bounds", &metadata.bounds);
+        }
+
+        println!("-- Waypoints -----------------------------");
+        print_vec_field("Waypoints", &gpx.waypoints);
+
+        println!("-- Tracks --------------------------------");
+        for (i, item) in gpx.tracks.iter().enumerate() {
+            println!("---- Track #{i}  ----------------------------");
+            print_option_field("Name", &item.name);
+            print_option_field("Comment", &item.comment);
+            print_option_field("Description", &item.description);
+            print_option_field("Source", &item.source);
+            print_vec_field("Links", &item.links);
+            print_option_field("Type", &item.type_);
+            print_option_field("Number", &item.number);
+
+            for (i, segment) in item.segments.iter().enumerate() {
+                println!("Segment #{i} = {} points", segment.points.len())
+            }
+        }
+
+        println!("-- Routes --------------------------------");
+        print_vec_field("Routes", &gpx.routes);
+
+        println!("******************************************");
     }
 
-    println!("-- Waypoints -----------------------------");
-    print_vec_field("Waypoints", &gpx.waypoints);
-
-    println!("-- Tracks --------------------------------");
-    for (i, item) in gpx.tracks.iter().enumerate() {
-        println!("-- Track #{i}  ------------------------------");
-        print_option_field("Name", &item.name);
-        print_option_field("comment", &item.comment);
-        print_option_field("description", &item.description);
-        print_option_field("source", &item.source);
-        print_vec_field("links", &item.links);
-        print_option_field("type", &item.type_);
-        print_option_field("number", &item.number);
-        println!("segments = {}", item.segments.len());
-    }
-
-    println!("-- Routes --------------------------------");
-    print_vec_field("Routes", &gpx.routes);
-
-    println!("------------------------------------------");
     Ok(())
 }
 
-pub fn invert(files: &[impl AsRef<Path> + Debug]) -> eyre::Result<()> {
+fn get_creator() -> String {
+    format!("{} v{}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"))
+}
+
+pub fn invert(files: &[impl AsRef<Path>]) -> eyre::Result<()> {
     check_files(files)?;
 
     let output_files = files
@@ -197,46 +234,78 @@ pub fn invert(files: &[impl AsRef<Path> + Debug]) -> eyre::Result<()> {
         .map(|f| get_output_file_path(f, Action::Invert))
         .collect::<Vec<_>>();
 
-    println!("{:#?}", files);
-    println!("{:#?}", output_files);
+    for (in_file, out_file) in zip(files, output_files) {
+        let mut content = load_gpx(&in_file)?;
 
-    Err(eyre!("Not implemented yet: cannot invert multiple files"))
+        content.tracks.reverse();
+
+        for track in &mut content.tracks {
+            track.name = track.name.clone().map(|name| format!("{name} (inverted)"));
+            track.segments.reverse();
+
+            for segment in &mut track.segments {
+                segment.points.reverse();
+            }
+        }
+
+        content.creator = Some(get_creator());
+
+        save_gpx(&content, &out_file)?;
+    }
+
+    Ok(())
 }
 
 pub fn invert_all(directory: &impl AsRef<Path>) -> eyre::Result<()> {
     check_directory(directory)?;
+    let files = list_gpx_files(directory)?;
 
-    let input_files = list_gpx_files(directory)?;
-    let output_file = get_output_file_path(directory, Action::Invert);
+    if files.is_empty() {
+        println!("No GPX files found in '{}'", directory.as_ref().display());
+        return Ok(());
+    }
 
-    println!("{:#?}", input_files);
-    println!("{:#?}", output_file);
-
-    Err(eyre!("Not implemented yet: cannot invert all"))
+    invert(&files)
 }
 
-pub fn merge(files: &[impl AsRef<Path> + Debug]) -> eyre::Result<()> {
+pub fn merge(files: &[impl AsRef<Path>], output_file: &impl AsRef<Path>) -> eyre::Result<()> {
     check_files(files)?;
 
-    let output_files = files
+    println!("Merging {} files...", files.len());
+
+    let contents = files.iter().map(load_gpx).collect::<Result<Vec<_>, _>>()?;
+
+    let segments = contents
         .iter()
-        .map(|f| get_output_file_path(f, Action::Merge))
+        .flat_map(|content| content.tracks.clone())
+        .flat_map(|track| track.segments)
         .collect::<Vec<_>>();
 
-    println!("{:#?}", files);
-    println!("{:#?}", output_files);
+    let track = gpx::Track {
+        segments,
+        ..Default::default()
+    };
 
-    Err(eyre!("Not implemented yet: cannot merge multiple files"))
+    let gpx = gpx::Gpx {
+        version: gpx::GpxVersion::Gpx11,
+        tracks: vec![track],
+        ..Default::default()
+    };
+
+    save_gpx(&gpx, output_file)?;
+
+    Ok(())
 }
 
 pub fn merge_all(directory: &impl AsRef<Path>) -> eyre::Result<()> {
     check_directory(directory)?;
+    let files = list_gpx_files(directory)?;
 
-    let input_files = list_gpx_files(directory)?;
+    if files.is_empty() {
+        println!("No GPX files found in '{}'", directory.as_ref().display());
+        return Ok(());
+    }
+
     let output_file = get_output_file_path(directory, Action::Merge);
-
-    println!("{:#?}", input_files);
-    println!("{:#?}", output_file);
-
-    Err(eyre!("Not implemented yet: cannot merge all"))
+    merge(&files, &output_file)
 }
