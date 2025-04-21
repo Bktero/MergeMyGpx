@@ -218,6 +218,24 @@ pub fn info(files: &[impl AsRef<Path>]) -> eyre::Result<()> {
             }
         }
 
+        let track_count = gpx.tracks.len();
+        let segment_count = gpx
+            .tracks
+            .iter()
+            .map(|track| track.segments.len())
+            .sum::<usize>();
+        let point_count = gpx
+            .tracks
+            .iter()
+            .flat_map(|track| track.segments.clone())
+            .map(|segment| segment.points.len())
+            .sum::<usize>();
+
+        println!(
+            "Total: {} tracks / {} segments / {} points",
+            track_count, segment_count, point_count
+        );
+
         println!("-- Routes --------------------------------");
         print_vec_field("Routes", &gpx.routes);
 
