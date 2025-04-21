@@ -97,7 +97,7 @@ fn list_gpx_files(directory: &impl AsRef<Path>) -> eyre::Result<Vec<PathBuf>> {
     Ok(gpx_files)
 }
 
-/// Load the GPX data from a file.
+/// Load GPX data from a file.
 fn load_gpx(file: &impl AsRef<Path>) -> eyre::Result<gpx::Gpx> {
     assert!(file.as_ref().extension().is_some_and(|ext| ext == "gpx"));
     println!("Loading GPX from '{}'...", file.as_ref().display());
@@ -108,7 +108,7 @@ fn load_gpx(file: &impl AsRef<Path>) -> eyre::Result<gpx::Gpx> {
     Ok(gpx)
 }
 
-/// Save GPX content to a file.
+/// Save GPX data to a file.
 fn save_gpx(gpx: &gpx::Gpx, file: &impl AsRef<Path>) -> eyre::Result<()> {
     assert!(file.as_ref().extension().is_some_and(|ext| ext == "gpx"));
     println!("Saving GPX to '{}'...", file.as_ref().display());
@@ -117,6 +117,11 @@ fn save_gpx(gpx: &gpx::Gpx, file: &impl AsRef<Path>) -> eyre::Result<()> {
     let writer = BufWriter::new(f);
     gpx::write(gpx, writer)?;
     Ok(())
+}
+
+/// Get the value to use for the "creator" field for files we create.
+fn get_creator() -> String {
+    format!("{} v{}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"))
 }
 
 #[derive(Display)]
@@ -222,10 +227,6 @@ pub fn info(files: &[impl AsRef<Path>]) -> eyre::Result<()> {
     Ok(())
 }
 
-fn get_creator() -> String {
-    format!("{} v{}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"))
-}
-
 pub fn invert(files: &[impl AsRef<Path>]) -> eyre::Result<()> {
     check_files(files)?;
 
@@ -235,12 +236,15 @@ pub fn invert(files: &[impl AsRef<Path>]) -> eyre::Result<()> {
         .collect::<Vec<_>>();
 
     for (in_file, out_file) in zip(files, output_files) {
-        let mut content = load_gpx(&in_file)?;
+        let mut gpx = load_gpx(&in_file)?;
 
-        content.tracks.reverse();
+        gpx.tracks.reverse();
 
-        for track in &mut content.tracks {
-            track.name = track.name.clone().map(|name| format!("{name} (inverted)"));
+        for track in &mut gpx.tracks {
+            track.name = track
+                .name
+                .clone()
+                .map(|name| format!("{name} ({})", Action::Invert));
             track.segments.reverse();
 
             for segment in &mut track.segments {
@@ -248,9 +252,9 @@ pub fn invert(files: &[impl AsRef<Path>]) -> eyre::Result<()> {
             }
         }
 
-        content.creator = Some(get_creator());
+        gpx.creator = Some(get_creator());
 
-        save_gpx(&content, &out_file)?;
+        save_gpx(&gpx, &out_file)?;
     }
 
     Ok(())
@@ -273,11 +277,11 @@ pub fn merge(files: &[impl AsRef<Path>], output_file: &impl AsRef<Path>) -> eyre
 
     println!("Merging {} files...", files.len());
 
-    let contents = files.iter().map(load_gpx).collect::<Result<Vec<_>, _>>()?;
+    let gpxs = files.iter().map(load_gpx).collect::<Result<Vec<_>, _>>()?;
 
-    let segments = contents
+    let segments = gpxs
         .iter()
-        .flat_map(|content| content.tracks.clone())
+        .flat_map(|elem| elem.tracks.clone())
         .flat_map(|track| track.segments)
         .collect::<Vec<_>>();
 
@@ -287,6 +291,7 @@ pub fn merge(files: &[impl AsRef<Path>], output_file: &impl AsRef<Path>) -> eyre
     };
 
     let gpx = gpx::Gpx {
+        creator: Some(get_creator()),
         version: gpx::GpxVersion::Gpx11,
         tracks: vec![track],
         ..Default::default()
