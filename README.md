@@ -4,7 +4,7 @@
 
 - Komoot cannot import files that contains too many points. We may add a command to mitigate this issue.
     - Split into several tracks?
-    - Keep 1 out of 2 points in the tracks?
+    - Keep 1 out of 2 points in the tracks? --> this is now possible with the `decimate` command.
 - When calling the `merge-all` command, the presence of `merged.gpx` in the directory is probably an issue.
     - It probably means that the command has been called several times on the same directory.
     - Merging again will result in a wrong file (the track will be made twice).

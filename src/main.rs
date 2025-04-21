@@ -1,5 +1,5 @@
 use clap::{Parser, Subcommand};
-use merge_my_gpx::{info, invert, invert_all, merge, merge_all};
+use merge_my_gpx::{decimate, info, invert, invert_all, merge, merge_all};
 use std::path::PathBuf;
 
 #[derive(Parser)]
@@ -53,6 +53,14 @@ enum Command {
         directory: PathBuf,
     },
 
+    /// Decimate the points of each (segment of each) track, to reduce the size of a or more files.
+    Decimate {
+        #[arg(required = true, num_args = 1.., help = HELP_FOR_FILES_ARG)]
+        files: Vec<PathBuf>,
+        /// Decimate by a factor M; that is, keep only every Mth sample.
+        factor_m: u16,
+    },
+
     /// Print information about one or more GPX files.
     Info {
         #[arg(required = true, num_args = 1.., help = HELP_FOR_FILES_ARG)]
@@ -71,6 +79,7 @@ fn main() -> eyre::Result<()> {
         Command::Merge { files } => merge(files, &std::env::current_dir()?.join("merged.gpx")),
         Command::MergeAll { directory } => merge_all(directory),
         Command::Info { files } => info(files),
+        Command::Decimate { files, factor_m} => decimate(files, *factor_m),
     };
 
     match execution_result {

@@ -126,6 +126,8 @@ fn get_creator() -> String {
 
 #[derive(Display)]
 enum Action {
+    #[strum(serialize = "decimated")]
+    Decimate,
     #[strum(serialize = "inverted")]
     Invert,
     #[strum(serialize = "merged")]
@@ -331,4 +333,40 @@ pub fn merge_all(directory: &impl AsRef<Path>) -> eyre::Result<()> {
 
     let output_file = get_output_file_path(directory, Action::Merge);
     merge(&files, &output_file)
+}
+
+pub fn decimate(files: &[impl AsRef<Path>], factor_m: u16) -> eyre::Result<()> {
+    check_files(files)?;
+
+    let output_files = files
+        .iter()
+        .map(|f| get_output_file_path(f, Action::Decimate))
+        .collect::<Vec<_>>();
+
+    for (in_file, out_file) in zip(files, output_files) {
+        let mut gpx = load_gpx(&in_file)?;
+
+        for track in &mut gpx.tracks {
+            track.name = track
+                .name
+                .clone()
+                .map(|name| format!("{name} ({})", Action::Decimate));
+
+            for segment in &mut track.segments {
+                segment.points = segment
+                    .points
+                    .iter()
+                    .enumerate()
+                    .filter(|(i, _)| i % factor_m as usize == 0)
+                    .map(|(_, element)| element.clone())
+                    .collect::<Vec<_>>();
+            }
+        }
+
+        gpx.creator = Some(get_creator());
+
+        save_gpx(&gpx, &out_file)?;
+    }
+
+    Ok(())
 }
