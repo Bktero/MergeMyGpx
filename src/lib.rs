@@ -1,6 +1,6 @@
 use eyre::eyre;
 use std::collections::HashSet;
-use std::fmt::Debug;
+use std::fmt::{Debug, Display};
 use std::fs::File;
 use std::io::{BufReader, BufWriter};
 use std::iter::zip;
@@ -156,9 +156,19 @@ fn get_output_file_path(path: &impl AsRef<Path>, action: Action) -> PathBuf {
     }
 }
 
-fn print_option_field<T: Debug>(key: &str, option: &Option<T>) {
+fn print_field<T: Debug>(key: &str, value: T) {
+    println!("{key} = {value:?}");
+}
+
+fn print_option_field_debug<T: Debug>(key: &str, option: &Option<T>) {
     if let Some(value) = option {
         println!("{key} = {value:?}");
+    }
+}
+
+fn print_option_field<T: Display>(key: &str, option: &Option<T>) {
+    if let Some(value) = option {
+        println!("{key} = {value}");
     }
 }
 
@@ -193,29 +203,37 @@ pub fn info(files: &[impl AsRef<Path>]) -> eyre::Result<()> {
         if let Some(metadata) = gpx.metadata {
             print_option_field("Name", &metadata.name);
             print_option_field("Description", &metadata.description);
-            print_option_field("Author", &metadata.author);
+            print_option_field_debug("Author", &metadata.author);
             print_vec_field("Links", &metadata.links);
-            print_option_field("Time", &metadata.time);
+            print_option_field_debug("Time", &metadata.time);
             print_option_field("Keywords", &metadata.keywords);
-            print_option_field("Copyright", &metadata.copyright);
-            print_option_field("Bounds", &metadata.bounds);
+            print_option_field_debug("Copyright", &metadata.copyright);
+            print_option_field_debug("Bounds", &metadata.bounds);
         }
 
         println!("-- Waypoints -----------------------------");
-        print_vec_field("Waypoints", &gpx.waypoints);
+        for (i, waypoint) in gpx.waypoints.iter().enumerate() {
+            println!("-- Waypoints #{i} --------------------------");
+            print_option_field("Name", &waypoint.name);
+            print_field("Point", &waypoint.point());
+            print_option_field("elevation", &waypoint.elevation);
+            print_option_field("comment", &waypoint.comment);
+            print_option_field("description", &waypoint.description);
+            print_option_field("source", &waypoint.source);
+        }
 
         println!("-- Tracks --------------------------------");
-        for (i, item) in gpx.tracks.iter().enumerate() {
+        for (i, track) in gpx.tracks.iter().enumerate() {
             println!("---- Track #{i}  ----------------------------");
-            print_option_field("Name", &item.name);
-            print_option_field("Comment", &item.comment);
-            print_option_field("Description", &item.description);
-            print_option_field("Source", &item.source);
-            print_vec_field("Links", &item.links);
-            print_option_field("Type", &item.type_);
-            print_option_field("Number", &item.number);
+            print_option_field("Name", &track.name);
+            print_option_field("Comment", &track.comment);
+            print_option_field("Description", &track.description);
+            print_option_field("Source", &track.source);
+            print_vec_field("Links", &track.links);
+            print_option_field("Type", &track.type_);
+            print_option_field("Number", &track.number);
 
-            for (i, segment) in item.segments.iter().enumerate() {
+            for (i, segment) in track.segments.iter().enumerate() {
                 println!("Segment #{i} = {} points", segment.points.len())
             }
         }
