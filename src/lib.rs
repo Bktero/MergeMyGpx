@@ -126,8 +126,8 @@ fn get_creator() -> String {
 
 #[derive(Display)]
 enum Action {
-    #[strum(serialize = "decimated")]
-    Decimate,
+    #[strum(serialize = "decimated-{0}-")]
+    Decimate(u16),
     #[strum(serialize = "inverted")]
     Invert,
     #[strum(serialize = "merged")]
@@ -358,7 +358,7 @@ pub fn decimate(files: &[impl AsRef<Path>], factor_m: u16) -> eyre::Result<()> {
 
     let output_files = files
         .iter()
-        .map(|f| get_output_file_path(f, Action::Decimate))
+        .map(|f| get_output_file_path(f, Action::Decimate(factor_m)))
         .collect::<Vec<_>>();
 
     for (in_file, out_file) in zip(files, output_files) {
@@ -368,7 +368,7 @@ pub fn decimate(files: &[impl AsRef<Path>], factor_m: u16) -> eyre::Result<()> {
             track.name = track
                 .name
                 .clone()
-                .map(|name| format!("{name} ({})", Action::Decimate));
+                .map(|name| format!("{name} ({})", Action::Decimate(factor_m)));
 
             for segment in &mut track.segments {
                 segment.points = segment
