@@ -1,6 +1,32 @@
-# Merge My GPX
+# Merge My GPX (MMG)
 
-## Futures (possible) development
+## Why this tool?
+
+![import gpx with several tracks in komoot](./doc/import-komoot.png)
+
+While planning a trip, I found myself juggling several GPX files — some with multiple tracks, one even going in the wrong direction. That’s when I created an early version of MMG: a tool to generate a single, clean GPX file that Komoot (and other platforms) can handle easily.
+
+I know I’m not the only one who’s struggled to get a single, usable track when planning a long ride — so here’s this tool :)
+
+## Usage
+
+```bash
+$ mmg --help
+MMG - A tool to merge GPX files
+
+Usage: merge-my-gpx [OPTIONS] <COMMAND>
+
+Commands:
+  merge       Merge all tracks from all given files into a file with a single track
+  merge-all   Same as the "merge" command with all the files in the given directory
+  invert      Invert each track of each given file
+  invert-all  Same as the "invert" command with all the files in the given directory
+  decimate    Decimate the points of each (segment of each) track, to reduce the size of a or more files
+  info        Print information about one or more GPX files
+  help        Print this message or the help of the given subcommand(s)
+```
+
+## Future (possible) development
 
 - Komoot cannot import files that contains too many points. We may add a command to mitigate this issue.
     - Split into several tracks?
