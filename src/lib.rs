@@ -126,7 +126,7 @@ fn get_creator() -> String {
 
 #[derive(Display)]
 enum Action {
-    #[strum(serialize = "decimated-{0}-")]
+    #[strum(serialize = "decimated-by-{0}")]
     Decimate(u16),
     #[strum(serialize = "inverted")]
     Invert,
