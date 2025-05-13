@@ -2,9 +2,13 @@
 
 ## Why this tool?
 
+Have you ever downloaded a GPX file with several tracks, then tried to import it in Komoot (and other another platform), just to face something like? 
+
 ![import gpx with several tracks in komoot](./doc/import-komoot.png)
 
-While planning a trip, I found myself juggling several GPX files — some with multiple tracks, one even going in the wrong direction. That’s when I created an early version of MMG: a tool to generate a single, clean GPX file that Komoot (and other platforms) can handle easily.
+This example is from the planner of La Vélo Francette (a bike road from Normandy to the Atlantic Ocean, in France). Instead of a single track that goes from Ouistreham to Château-Gontier (or further), the GPX file has one track per stage. Consequence: you cannot import it as once...
+
+Back in 2023, while planning a trip, I found myself juggling several GPX files — some with multiple tracks, one even going in the wrong direction. That’s when I created the first version of MMG: a tool to generate a single, clean GPX file that Komoot and friends can handle easily.
 
 I know I’m not the only one who’s struggled to get a single, usable track when planning a long ride — so here’s this tool :)
 
