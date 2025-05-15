@@ -375,7 +375,7 @@ pub fn decimate(files: &[impl AsRef<Path>], factor_m: u16) -> eyre::Result<()> {
                     .points
                     .iter()
                     .enumerate()
-                    .filter(|(i, _)| i % factor_m as usize == 0)
+                    .filter(|(i, _)| i % factor_m as usize == 0 || *i == segment.points.len() - 1)
                     .map(|(_, element)| element.clone())
                     .collect::<Vec<_>>();
             }
