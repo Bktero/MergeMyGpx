@@ -1,0 +1,100 @@
+name: Build and Release
+
+on:
+  push:
+    branches:
+      - 'main'
+#    tags:
+#      - 'v*'
+
+jobs:
+  build:
+    name: Build on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+            asset_name: merge-my-gpx.exe
+            asset_path: target/release/merge-my-gpx.exe
+            build_command: cargo build --release
+          - os: macos-latest
+            asset_name: merge-my-gpx_macos
+            asset_path: target/release/merge-my-gpx
+            build_command: cargo build --release
+          - os: ubuntu-latest
+            asset_name: merge-my-gpx_linux
+            asset_path: target/x86_64-unknown-linux-musl/release/merge-my-gpx
+            build_command: |
+              rustup target add x86_64-unknown-linux-musl
+              sudo apt-get update -y
+              sudo apt-get install -y musl-tools
+              cargo build --release --target x86_64-unknown-linux-musl
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+
+      - name: Build release binary
+        run: ${{ matrix.build_command }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: binaries-${{ matrix.os }}
+          path: ${{ matrix.asset_path }}
+
+#  release:
+#    name: Create Release
+#    needs: build
+#    runs-on: ubuntu-latest
+#    steps:
+#      - name: Create Release
+#        id: create_release
+#        uses: softprops/action-gh-release@v2
+#        env:
+#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#        with:
+#          tag_name: ${{ github.ref }}
+#          release_name: Release ${{ github.ref }}
+#          draft: false
+#          prerelease: false
+#
+#      - name: Download all artifacts
+#        uses: actions/download-artifact@v3
+#
+#      - name: Upload Windows Release Asset
+#        uses: actions/upload-release-asset@v1
+#        env:
+#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#        with:
+#          upload_url: ${{ steps.create_release.outputs.upload_url }}
+#          asset_path: ./binaries-windows-latest/merge-my-gpx.exe
+#          asset_name: merge-my-gpx.exe
+#          asset_content_type: application/octet-stream
+#
+#      - name: Upload macOS Release Asset
+#        uses: actions/upload-release-asset@v1
+#        env:
+#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#        with:
+#          upload_url: ${{ steps.create_release.outputs.upload_url }}
+#          asset_path: ./binaries-macos-latest/merge-my-gpx
+#          asset_name: merge-my-gpx_macos
+#          asset_content_type: application/octet-stream
+#
+#      - name: Upload Linux Release Asset
+#        uses: actions/upload-release-asset@v1
+#        env:
+#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#        with:
+#          upload_url: ${{ steps.create_release.outputs.upload_url }}
+#          asset_path: ./binaries-ubuntu-latest/merge-my-gpx
+#          asset_name: merge-my-gpx_linux
+#          asset_content_type: application/octet-stream
