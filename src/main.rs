@@ -53,11 +53,18 @@ enum Command {
         directory: PathBuf,
     },
 
-    /// Decimate the points of each (segment of each) track, to reduce the size of a or more files.
+    /// Decimate the points of each (segment of each) track of each given file, to reduce their size.
+    /// 
+    /// For instance, Komoot cannot import a GPX file with too many points, and shows an error message like:
+    /// 
+    /// "There’s an issue with your file. It’s either too large or contains too many waypoints.
+    /// Try importing multiple smaller files instead."
+    /// 
+    /// You can use this command to reduce the number of points until Komoot is happy.
     Decimate {
         #[arg(required = true, num_args = 1.., help = HELP_FOR_FILES_ARG)]
         files: Vec<PathBuf>,
-        /// Decimate by a factor M; that is, keep only every Mth sample.
+        /// Decimate by a factor M; that is, keep only every M-th point.
         factor_m: u16,
     },
 

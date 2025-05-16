@@ -2,19 +2,19 @@
 
 ## Why this tool?
 
-Have you ever downloaded a GPX file with several tracks, then tried to import it in Komoot (and other another platform), just to face something like? 
+Have you ever downloaded a GPX file just to face something like this when you tried to import it in Komoot (and another platform)? 
 
 ![import gpx with several tracks in komoot](./doc/import-komoot.png)
 
-This example is from the planner of La Vélo Francette (a bike road from Normandy to the Atlantic Ocean, in France). Instead of a single track that goes from Ouistreham to Château-Gontier (or further), the GPX file has one track per stage. Consequence: you cannot import it as once...
+This example is from the planner of La Vélo Francette (a bike road from Normandy to the Atlantic Ocean, in France). Instead of a single track that goes from start to finish, the GPX file has one track per stage. Consequence: you cannot import your trip as once and you cannot get a single route in your GPS unit to navigate.
 
-Back in 2023, while planning a trip, I found myself juggling several GPX files — some with multiple tracks, one even going in the wrong direction. That’s when I created the first version of MMG: a tool to generate a single, clean GPX file that Komoot and friends can handle easily.
+Back in 2023, I was planning a long tour in Bourgogne, France, and I found myself juggling several GPX files — some with multiple tracks, one even going in the wrong direction. That’s when I created the first version of MMG: a tool to generate a single, clean GPX file that Komoot and friends can handle easily.
 
 I know I’m not the only one who’s struggled to get a single, usable track when planning a long ride — so here’s this tool :)
 
 ## Usage
 
-```bash
+```raw
 $ mmg --help
 MMG - A tool to merge GPX files
 
@@ -30,11 +30,17 @@ Commands:
   help        Print this message or the help of the given subcommand(s)
 ```
 
+You can for instance do:
+
+```bash
+$ mmg invert c.gpx
+$ mmg merge a.gpx b.gpx c-inverted.gpx d.gpx
+```
+
+You will get merged.gpx and it will contain a single track that goes from the start of `a` to the end of `d`.
+
 ## Future (possible) development
 
-- Komoot cannot import files that contains too many points. We may add a command to mitigate this issue.
-    - Split into several tracks?
-    - Keep 1 out of 2 points in the tracks? --> this is now possible with the `decimate` command.
 - When calling the `merge-all` command, the presence of `merged.gpx` in the directory is probably an issue.
     - It probably means that the command has been called several times on the same directory.
     - Merging again will result in a wrong file (the track will be made twice).
